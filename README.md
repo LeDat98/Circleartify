@@ -106,9 +106,31 @@ The processing is optimized using NumPy's vectorized operations and OpenCV's eff
 
 ## Example Results
 
-| Original | Processed (window_size=5) | Processed (window_size=10) |
-|----------|---------------------------|----------------------------|
-| ![Original Image](images/example/hokusai040_main.jpg) | ![Processed Image w5](images/example/hokusai040_main_art_5px.jpg) | ![Processed Image w10](images/example/hokusai040_main_art_10px.jpg) |
+### Image Processing
+
+**Original Image**  
+![Original Image](images/example/hokusai040_main.jpg)
+
+**Processed (window_size=5)**  
+![Processed Image w5](images/example/hokusai040_main_art_5px.jpg)
+
+**Processed (window_size=10)**  
+![Processed Image w10](images/example/hokusai040_main_art_10px.jpg)
+
+### Webcam Processing
+
+Below is an example of the webcam processing effect. Click on the thumbnail to watch the video:
+
+[![Webcam Processing Example](https://img.youtube.com/vi/VIDEO_ID/0.jpg)](https://github.com/LeDat98/Circleartify/raw/main/examples/webcam_art_20250411-161217.mp4)
+
+*Note: Replace VIDEO_ID with actual YouTube video ID if you upload it to YouTube, or use a different approach below*
+
+<!-- Alternative approach using HTML if your repo has the video file: -->
+<video src="https://github.com/LeDat98/Circleartify/raw/main/examples/webcam_art_20250411-161217.mp4" controls="controls" style="max-width: 730px;">
+</video>
+
+<!-- Another alternative using an animated GIF created from your video: -->
+<!-- ![Webcam Processing Demo](examples/webcam_demo.gif) -->
 
 ## License
 
