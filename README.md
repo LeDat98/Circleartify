@@ -119,18 +119,10 @@ The processing is optimized using NumPy's vectorized operations and OpenCV's eff
 
 ### Webcam Processing
 
-Below is an example of the webcam processing effect. Click on the thumbnail to watch the video:
-
-[![Webcam Processing Example](https://img.youtube.com/vi/VIDEO_ID/0.jpg)](https://github.com/LeDat98/Circleartify/raw/main/examples/webcam_art_20250411-161217.mp4)
-
-*Note: Replace VIDEO_ID with actual YouTube video ID if you upload it to YouTube, or use a different approach below*
-
-<!-- Alternative approach using HTML if your repo has the video file: -->
-<video src="https://github.com/LeDat98/Circleartify/raw/main/examples/webcam_art_20250411-161217.mp4" controls="controls" style="max-width: 730px;">
-</video>
+Below is an example of the webcam processing effect.
 
 <!-- Another alternative using an animated GIF created from your video: -->
-<!-- ![Webcam Processing Demo](examples/webcam_demo.gif) -->
+![Webcam Processing Demo](images/example/webcam_demo.gif)
 
 ## License
 
