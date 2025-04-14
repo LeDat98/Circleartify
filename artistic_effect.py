@@ -5,27 +5,45 @@ import os
 import argparse
 
 # Function to find the nearest multiple of a size to fit with window_size
-def find_nearest_multiple(size, factor):
+def find_nearest_multiple(size, factor, max_deviation=3):
     """
     Find the nearest size that is a multiple of factor.
     Args:
         size (int): Original size.
         factor (int): Factor (window size).
+        max_deviation (int): Maximum allowed percentage deviation from original size.
     Returns:
         int: New size that is the nearest multiple of factor to size.
     """
-    return round(size / factor) * factor
+    new_size = round(size / factor) * factor
+    
+    # Kiểm tra xem thay đổi kích thước có vượt quá giới hạn cho phép không
+    deviation_percent = abs(new_size - size) / size * 100
+    if deviation_percent > max_deviation:
+        # Nếu vượt quá giới hạn, chọn multiple gần nhất
+        lower_multiple = (size // factor) * factor
+        upper_multiple = lower_multiple + factor
+        
+        if abs(lower_multiple - size) <= abs(upper_multiple - size):
+            new_size = lower_multiple
+        else:
+            new_size = upper_multiple
+    
+    return new_size
 
 # Function to process a frame with NumPy optimization
-def process_frame(frame, window_size=5):
+def process_frame(frame, window_size=5, maintain_size=True):
     """
     Process a frame with circle effect.
     Args:
         frame (numpy.ndarray): Input frame.
         window_size (int): Window size.
+        maintain_size (bool): Whether to maintain original frame size.
     Returns:
         numpy.ndarray: Processed frame.
     """
+    original_shape = frame.shape
+    
     # Convert frame to grayscale if needed
     if len(frame.shape) == 3:
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -76,7 +94,19 @@ def process_frame(frame, window_size=5):
 
     # Convert array to 3-channel frame (for saving color video)
     output_frame = cv2.cvtColor(output_array, cv2.COLOR_GRAY2BGR)
+    
+    # Resize back to original dimensions if maintain_size is True
+    if maintain_size and (new_width, new_height) != (original_width, original_height):
+        output_frame = cv2.resize(output_frame, (original_width, original_height), interpolation=cv2.INTER_AREA)
+    
+    # Ensure output frame has same number of channels as input
+    if len(original_shape) == 3 and original_shape[2] == output_frame.shape[2]:
+        return output_frame
+    elif len(original_shape) == 2:
+        return cv2.cvtColor(output_frame, cv2.COLOR_BGR2GRAY)
+    
     return output_frame
+
 
 # Function to process image
 def create_artistic_image(input_path, output_path=None, window_size=5, save=True, show=False):
@@ -145,6 +175,11 @@ def process_video(input_path, output_path=None, window_size=5, batch_size=10, sa
     original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     
+    # Detect video orientation
+    is_portrait = original_height > original_width
+    if is_portrait:
+        print(f"Detected portrait video: {original_width}x{original_height}")
+    
     # Check if video is larger than Full HD (1920x1080)
     need_resize = original_width > 1920 or original_height > 1080
     if need_resize:
@@ -165,10 +200,39 @@ def process_video(input_path, output_path=None, window_size=5, batch_size=10, sa
     else:
         actual_batch_size = 1
     
+    # Process first frame to get the exact output size
+    ret, first_frame = cap.read()
+    if not ret:
+        print("Cannot read frames from the video")
+        return
+    
+    if need_resize:
+        first_frame = cv2.resize(first_frame, (new_width, new_height), interpolation=cv2.INTER_AREA)
+    
+    # Process first frame to determine exact output size
+    first_processed_frame = process_frame(first_frame, window_size)
+    output_height, output_width = first_processed_frame.shape[:2]
+    
+    print(f"Input frame size: {new_width}x{new_height}")
+    print(f"Output frame size: {output_width}x{output_height}")
+    
+    # Reset video to beginning
+    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+    
     # Create video writer to save output video if needed
     if save and output_path:
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(output_path, fourcc, fps, (new_width, new_height))
+        out = cv2.VideoWriter(output_path, fourcc, fps, (output_width, output_height))
+        if not out.isOpened():
+            print(f"Warning: Could not initialize VideoWriter with size {output_width}x{output_height}")
+            print("Trying with swapped dimensions...")
+            # Try with swapped dimensions as a fallback
+            out = cv2.VideoWriter(output_path, fourcc, fps, (output_height, output_width))
+            if not out.isOpened():
+                print("Error: Failed to create output video file. Continuing without saving...")
+                save = False
+            else:
+                print(f"Successfully created VideoWriter with swapped dimensions: {output_height}x{output_width}")
 
     # Variables to track progress
     frame_count = 0
@@ -212,8 +276,16 @@ def process_video(input_path, output_path=None, window_size=5, batch_size=10, sa
                     break
             
             # Write frame to output video
-            if save and output_path:
-                out.write(processed_frame)
+            if save and output_path and 'out' in locals():
+                # Verify frame dimensions match with what VideoWriter expects
+                if processed_frame.shape[1] != output_width or processed_frame.shape[0] != output_height:
+                    processed_frame = cv2.resize(processed_frame, (output_width, output_height))
+                try:
+                    out.write(processed_frame)
+                except Exception as e:
+                    print(f"Error writing frame: {e}")
+                    print(f"Frame shape: {processed_frame.shape}, Expected: {output_width}x{output_height}")
+                    save = False
             
             frame_count += 1
             frames_since_last_update += 1
@@ -234,7 +306,7 @@ def process_video(input_path, output_path=None, window_size=5, batch_size=10, sa
 
     # Release resources
     cap.release()
-    if save and output_path:
+    if save and output_path and 'out' in locals():
         out.release()
     if show:
         cv2.destroyAllWindows()
@@ -245,7 +317,7 @@ def process_video(input_path, output_path=None, window_size=5, batch_size=10, sa
     print(f"Average processing speed: {frame_count/elapsed_time:.2f} FPS")
     if save and output_path:
         print(f"Video has been saved at: {output_path}")
-
+        
 # Function to process webcam
 def process_webcam(window_size=5, output_path=None, save=True, show=True):
     """
